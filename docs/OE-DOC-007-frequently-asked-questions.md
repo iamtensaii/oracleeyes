@@ -24,10 +24,10 @@ last_reviewed: "2026-04-18"
 **A:** From the directory that contains **`docker-compose.yml`**, run `docker compose up -d --build` (after `cp .env.example .env` and any edits). That starts all three services on one Docker network. See **OE-DOC-002** and the root **README.md**.
 
 **Q: Why does Postgres not listen on localhost?**  
-**A:** Default Compose leaves Postgres **internal-only** to avoid Docker Desktop port-forward errors on some WSL setups. Use `docker compose exec postgres psql …` or re-enable `ports` in `docker-compose.yml` when your engine allows it.
+**A:** Default Compose keeps Postgres **on the internal network only** (normal for production-style stacks: only peer services connect). Use `docker compose exec postgres psql …`, or add `ports` in `docker-compose.yml` if you need host access to `5432/tcp`.
 
 **Q: Assistant returns configuration errors.**  
-**A:** Set `LOCAL_LLM_BASE_URL` (and model id) in `apps/web/.env` to a reachable OpenAI-compatible endpoint. In Docker, `host.docker.internal` is often used for host LLMs.
+**A:** Set `LOCAL_LLM_BASE_URL` (and model id) in `apps/web/.env` to a reachable OpenAI-compatible endpoint. From the `web` container, the bundled Compose file maps `host.docker.internal` to the Linux bridge gateway so a host-bound LLM can be reached without publishing it into the Compose network.
 
 **Q: Browser cannot reach ML API.**  
 **A:** Ensure `NEXT_PUBLIC_ML_API_URL` matches where the browser runs (usually `http://localhost:8000` when ML is published on 8000). Server-side routes use `ML_API_URL`.

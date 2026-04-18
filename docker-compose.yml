@@ -5,12 +5,10 @@ services:
       POSTGRES_USER: oracleeyes
       POSTGRES_PASSWORD: oracleeyes
       POSTGRES_DB: oracleeyes
-    # Docker Desktop + WSL often fails here with:
-    #   ports are not available ... /forwards/expose returned unexpected status: 500
-    # Publishing Postgres to the Windows host is what triggers that path. Other services
-    # still reach the DB at postgres:5432 on the compose network (DATABASE_URL unchanged).
-    # Host DB access: `docker compose exec postgres psql -U oracleeyes -d oracleeyes`
-    # To publish 5432 to the host again after Docker is healthy, add back:
+    # Postgres is not published to the host by default (typical production posture: only
+    # `web` and `ml-api` reach postgres:5432 on the Compose network). Uncomment `ports`
+    # below if you need host-side tools or backups on 5432/tcp.
+    # Admin without publishing: docker compose exec postgres psql -U oracleeyes -d oracleeyes
     # ports:
     #   - "5432:5432"
     volumes:
@@ -23,8 +21,8 @@ services:
       retries: 12
       start_period: 45s
 
-  # ML API: rebuild image after Dockerfile changes. GPU: requires NVIDIA drivers + Docker GPU support
-  # (Docker Desktop WSL2 / Linux + nvidia-container-toolkit). Comment out `gpus` if the engine errors on your host.
+  # ML API: rebuild image after Dockerfile changes. GPU: NVIDIA drivers on the host +
+  # Docker with NVIDIA Container Toolkit. Comment out `gpus` if the runtime has no GPU.
   ml-api:
     build:
       context: ./services/ml-api
@@ -52,7 +50,7 @@ services:
         # Browser (your machine) calls ML API on published port 8000
         NEXT_PUBLIC_ML_API_URL: http://localhost:8000
     extra_hosts:
-      # Reach host-bound Docker Model Runner (TCP :12434) from Linux/WSL Compose
+      # LLM on the Docker host (default LOCAL_LLM_* uses :12434): map host.docker.internal → bridge gateway.
       - "host.docker.internal:host-gateway"
     ports:
       - "3000:3000"
@@ -67,8 +65,7 @@ services:
       # Next.js API routes (server) call ml-api inside the compose network
       ML_API_URL: http://ml-api:8000
       DATABASE_URL: postgresql://oracleeyes:oracleeyes@postgres:5432/oracleeyes
-      # Model Runner listens on the host at :12434 when TCP is enabled — use host.docker.internal from containers.
-      # (model-runner.docker.internal often refuses unless Docker wires it; host.docker.internal is reliable.)
+      # Default assumes an OpenAI-compatible server on the host at :12434 (override LOCAL_LLM_* in .env).
       # Host `npm run dev`: set LOCAL_LLM_BASE_URL=http://localhost:12434/engines/llama.cpp/v1 in apps/web/.env
       LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-http://host.docker.internal:12434/engines/llama.cpp/v1}
       LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-docker.io/ai/gemma4:latest}

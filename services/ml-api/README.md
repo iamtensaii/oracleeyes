@@ -1,6 +1,6 @@
 # OracleEyes ML API
 
-FastAPI service for CSV ingest, classical train/predict/backtest, and optional **Kronos** / **Oracle** forecast endpoints. Used by [`apps/web`](../apps/web) via `ML_API_URL` (Docker) or `NEXT_PUBLIC_ML_API_URL` (browser).
+FastAPI service for CSV ingest, classical train/predict/backtest, and optional **Kronos** / **Oracle** forecast endpoints. Used by [`apps/web`](../apps/web) via `ML_API_URL` (Compose network) or `NEXT_PUBLIC_ML_API_URL` (browser).
 
 ## Run with Docker (recommended)
 
@@ -17,7 +17,7 @@ Health check: `GET http://localhost:8000/health` (after publishing port `8000` i
 ```bash
 cd services/ml-api
 python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 # For CUDA torch similar to Docker, see Dockerfile pip index-url lines.

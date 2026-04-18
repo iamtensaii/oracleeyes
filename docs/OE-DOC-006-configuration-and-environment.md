@@ -32,11 +32,10 @@ Never commit real secrets; root and app **`.gitignore`** exclude `.env` and vari
 | Variable | Role |
 |----------|------|
 | `NEXT_PUBLIC_ML_API_URL` | Browser → ML API (often `http://localhost:8000`) |
-| `ML_API_URL` | Server Route Handlers → ML API (Docker: `http://ml-api:8000`) |
+| `ML_API_URL` | Server Route Handlers → ML API (inside Compose: `http://ml-api:8000`) |
 | `DATABASE_URL` | Postgres for chat memory (Compose network DSN) |
 | `LOCAL_LLM_BASE_URL` / `LOCAL_LLM_MODEL` | OpenAI-compatible chat backend |
 | Optional Google CSE | Web search tool in chat when keys present |
-| `TRADINGAGENTS_REPO` | Enables `/api/research/tradingagents-memo` bridge |
 
 ## How Compose wires the web container
 

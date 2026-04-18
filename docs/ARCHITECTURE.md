@@ -4,7 +4,7 @@
 
 ## Quick orientation
 
-OracleEyes is a **Compose-backed** stack: **Next.js (`web`)** + **FastAPI (`ml-api`)** + **Postgres**, with optional **LLM** and **TradingAgents** host integrations.
+OracleEyes is a **Compose-backed** stack: **Next.js (`web`)** + **FastAPI (`ml-api`)** + **Postgres**, with a **local OpenAI-compatible LLM** for the assistant when configured.
 
 ## Canonical documents
 

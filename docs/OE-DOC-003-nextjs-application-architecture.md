@@ -55,11 +55,9 @@ apps/web/src/app/
 └── api/
     ├── chat/route.ts       # Streaming assistant + tools + memory
     ├── setup-status/route.ts
-    ├── market/
-    │   ├── symbols/route.ts
-    │   └── ohlc/route.ts
-    └── research/
-        └── tradingagents-memo/route.ts   # Optional subprocess bridge
+    └── market/
+        ├── symbols/route.ts
+        └── ohlc/route.ts
 ```
 
 **Redirects** (not separate `page.tsx` routes) are declared in **`next.config.ts`**:

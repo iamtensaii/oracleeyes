@@ -25,15 +25,15 @@ async function probeLocalOpenAiCompatible(baseURL: string): Promise<{ ok: boolea
     }
     return {
       ok: false,
-      hint: "LOCAL_LLM_BASE_URL is set, but the models listing returned an error. Check the base path (Docker Model Runner often ends with /engines/llama.cpp/v1).",
+      hint: "LOCAL_LLM_BASE_URL is set, but the models listing returned an error. Check the base path (many local servers use a path ending in /v1; llama.cpp-style gateways often use /engines/llama.cpp/v1).",
     };
   } catch (e) {
     const aborted = e instanceof Error && e.name === "AbortError";
     return {
       ok: false,
       hint: aborted
-        ? "The local LLM endpoint timed out. Confirm Docker Model Runner is running and TCP access is enabled."
-        : "The server could not reach the local LLM. From containers, use Docker’s model-runner hostname; on the host, try localhost:12434.",
+        ? "The local LLM endpoint timed out. Confirm the inference service is running and reachable from this process."
+        : "The server could not reach the local LLM. From containers, LOCAL_LLM_BASE_URL must resolve inside the web container (Compose often uses host.docker.internal for a host-bound server); on the host, try localhost with the port your server uses.",
     };
   }
 }
@@ -68,7 +68,7 @@ export async function GET() {
 
   const agentOk = localProbe?.ok === true;
   let agentHint =
-    "The assistant needs LOCAL_LLM_BASE_URL (and optionally LOCAL_LLM_MODEL) pointing at an OpenAI-compatible local API. Ask your administrator to configure Docker Model Runner or similar and restart the web app.";
+    "The assistant needs LOCAL_LLM_BASE_URL (and optionally LOCAL_LLM_MODEL) pointing at an OpenAI-compatible local API. Ask your administrator to deploy an inference endpoint reachable from the web service and restart the web app.";
   if (localProbe) {
     agentHint = localProbe.hint;
   }

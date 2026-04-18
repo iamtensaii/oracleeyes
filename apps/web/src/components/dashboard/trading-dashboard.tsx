@@ -45,7 +45,6 @@ export function TradingDashboard({ initialWorkspaceTab = "predict" }: Props) {
   const [datasetMeta, setDatasetMeta] = useState<CsvDatasetMeta | null>(null);
   const [forecastBars, setForecastBars] = useState<OhlcBar[]>([]);
   const [lastForecastPred, setLastForecastPred] = useState<PredictResult | null>(null);
-  const [tradingAgentsMemo, setTradingAgentsMemo] = useState<string | null>(null);
   const [autoAnalyzeNonce, setAutoAnalyzeNonce] = useState(0);
   const [chartOverlays, setChartOverlays] = useState({
     volume: true,
@@ -61,7 +60,6 @@ export function TradingDashboard({ initialWorkspaceTab = "predict" }: Props) {
   useEffect(() => {
     setForecastBars([]);
     setLastForecastPred(null);
-    setTradingAgentsMemo(null);
   }, [barsFingerprint]);
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>(
     urlTab ?? initialWorkspaceTab,
@@ -333,7 +331,6 @@ export function TradingDashboard({ initialWorkspaceTab = "predict" }: Props) {
                         setAutoAnalyzeNonce((n) => n + 1);
                         openWorkspaceTab("agents");
                       }}
-                      onTradingAgentsMemo={setTradingAgentsMemo}
                     />
                   </div>
                 ) : null}
@@ -367,7 +364,6 @@ export function TradingDashboard({ initialWorkspaceTab = "predict" }: Props) {
                     forecastBars={forecastBars}
                     lastForecastPred={lastForecastPred}
                     autoAnalyzeNonce={autoAnalyzeNonce}
-                    tradingAgentsMemo={tradingAgentsMemo}
                   />
                 </div>
               </div>

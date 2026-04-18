@@ -42,7 +42,7 @@ docker compose up -d --build
 
 - **Web UI:** [http://localhost:3000](http://localhost:3000)
 - **ML API:** [http://localhost:8000](http://localhost:8000) (Predict page in the browser uses this URL)
-- **Postgres:** not published to `localhost` by default (avoids Docker Desktop `/forwards/expose` 500 on some WSL setups). Inside Compose it stays `postgres:5432` / user `oracleeyes`. From the host shell: `docker compose exec postgres psql -U oracleeyes -d oracleeyes`. To map `localhost:5432` again, uncomment `ports` under `postgres` in `docker-compose.yml` once Docker’s port publishing works.
+- **Postgres:** not published to the host by default (only `web` / `ml-api` use `postgres:5432` on the Compose network; avoids exposing the DB on the machine’s interfaces). From the host: `docker compose exec postgres psql -U oracleeyes -d oracleeyes`. To bind `5432/tcp` on the Docker host (backups, GUI clients), add `ports` under `postgres` in `docker-compose.yml`.
 
 `ML_API_URL` inside the `web` container points at `http://ml-api:8000` for server-side API routes; `NEXT_PUBLIC_ML_API_URL` is set at **image build** time to `http://localhost:8000` so the browser can reach the published ML port.
 
@@ -51,7 +51,7 @@ docker compose up -d --build
 ```bash
 cd apps/web
 cp .env.example .env
-# Edit .env — set LOCAL_LLM_BASE_URL for local Model Runner / OpenAI-compatible LLM
+# Edit .env — set LOCAL_LLM_BASE_URL for your OpenAI-compatible LLM (host or sidecar)
 npm install
 npm run dev
 ```

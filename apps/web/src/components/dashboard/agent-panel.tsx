@@ -35,8 +35,6 @@ type Props = {
   lastForecastPred: PredictResult | null;
   /** Incremented after a successful one-click predict; triggers one assistant reply. */
   autoAnalyzeNonce: number;
-  /** Optional markdown from TradingAgents thin bridge (server-side subprocess). */
-  tradingAgentsMemo?: string | null;
 };
 
 function renderMessageParts(
@@ -80,7 +78,6 @@ export function AgentPanel({
   forecastBars,
   lastForecastPred,
   autoAnalyzeNonce,
-  tradingAgentsMemo = null,
 }: Props) {
   const [sessionId] = useState(() => newSessionId());
   const [replyDepth, setReplyDepth] = useState<ReplyDepth>("layered");
@@ -94,7 +91,6 @@ export function AgentPanel({
     datasetMeta,
     forecastBars,
     lastForecastPred,
-    tradingAgentsMemo,
   });
   useLayoutEffect(() => {
     chatPayloadRef.current = {
@@ -105,9 +101,8 @@ export function AgentPanel({
       datasetMeta,
       forecastBars,
       lastForecastPred,
-      tradingAgentsMemo,
     };
-  }, [sessionId, replyDepth, bars, datasetMeta, forecastBars, lastForecastPred, tradingAgentsMemo]);
+  }, [sessionId, replyDepth, bars, datasetMeta, forecastBars, lastForecastPred]);
 
   /* eslint-disable react-hooks/refs */
   const transport = useMemo(
@@ -132,7 +127,6 @@ export function AgentPanel({
               datasetMeta: ctx.datasetMeta,
               forecastBars: ctx.forecastBars,
               lastForecastPred: ctx.lastForecastPred,
-              tradingAgentsMemo: ctx.tradingAgentsMemo,
               messages,
               id,
               trigger,
@@ -161,7 +155,7 @@ export function AgentPanel({
 
   const showLocalLlmHelp =
     error != null &&
-    /ECONNREFUSED|fetch failed|Failed to fetch|ENOTFOUND|12434|model-runner|429|rate.?limit|local LLM|not configured/i.test(
+    /ECONNREFUSED|fetch failed|Failed to fetch|ENOTFOUND|12434|host\.docker\.internal|429|rate.?limit|local LLM|not configured/i.test(
       error.message,
     );
 
@@ -198,12 +192,11 @@ export function AgentPanel({
           </p>
           {showLocalLlmHelp ? (
             <p className="text-foreground/90 mt-2 text-xs leading-relaxed dark:text-foreground/85">
-              Chat uses only a <span className="font-medium">local</span> LLM. Confirm Docker Model Runner (or your
-              OpenAI-compatible server) is running, TCP is enabled if needed, and{" "}
+              Chat uses only a <span className="font-medium">local</span> OpenAI-compatible LLM. Confirm that service is
+              running and reachable from the <span className="font-mono">web</span> process, and{" "}
               <span className="font-mono">LOCAL_LLM_BASE_URL</span> / <span className="font-mono">LOCAL_LLM_MODEL</span>{" "}
-              match your setup (from the <span className="font-mono">web</span> container, often{" "}
-              <span className="font-mono">model-runner.docker.internal</span> on port{" "}
-              <span className="font-mono">12434</span>).
+              match your deployment (bundled Compose often uses{" "}
+              <span className="font-mono">host.docker.internal:12434</span> when the LLM listens on the Docker host).
             </p>
           ) : null}
           <Button type="button" variant="ghost" size="sm" className="mt-1.5 h-7 px-2 text-xs" onClick={() => clearError()}>

@@ -23,13 +23,11 @@ flowchart LR
   end
   subgraph host [Host_optional]
     LLM[OpenAI_compatible_LLM]
-    TA[TradingAgents_bridge]
   end
   UI --> WEB
   WEB --> ML
   WEB --> PG
   WEB -.-> LLM
-  WEB -.-> TA
   ML --> PG
 ```
 
@@ -39,8 +37,7 @@ flowchart LR
 - **`web` container** runs the Next.js server. Server code uses **`ML_API_URL`** (e.g. `http://ml-api:8000` on the Compose network) and **`DATABASE_URL`** for Postgres.
 - **`ml-api`** exposes train, predict, backtest, ingest, and optional Kronos / Oracle forecast routes. May use **GPU** when enabled in Compose.
 - **Postgres** stores **`agent_memory`** (see repository root `init.sql`) for assistant continuity when configured.
-- **Host LLM** — `LOCAL_LLM_BASE_URL` (often via `host.docker.internal`) powers **`POST /api/chat`**.
-- **TradingAgents** (optional) — **`POST /api/research/tradingagents-memo`** runs a subprocess against an external repo when `TRADINGAGENTS_REPO` is set.
+- **Host or sidecar LLM** — `LOCAL_LLM_BASE_URL` (Compose defaults use `host.docker.internal` when the inference server listens on the Docker host) powers **`POST /api/chat`**.
 
 ## Run the full stack (Docker Compose)
 

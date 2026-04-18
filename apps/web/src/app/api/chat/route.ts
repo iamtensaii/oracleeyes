@@ -80,10 +80,10 @@ function augmentLocalLlmErrorMessage(message: string): string {
   const m = message.trim();
   if (/ECONNREFUSED|fetch failed|Failed to fetch|ENOTFOUND|network error|connect/i.test(m)) {
     const head = m.split("\n")[0]!.slice(0, 280);
-    return `${head}\n\nThe server could not reach your local LLM on port 12434. In Docker Desktop: Settings → Models → enable “Expose Model Runner on TCP”. From containers, LOCAL_LLM_BASE_URL should usually be http://host.docker.internal:12434/engines/llama.cpp/v1 (the compose file sets this by default). For npm run dev on the host, use http://localhost:12434/engines/llama.cpp/v1.`;
+    return `${head}\n\nThe server could not reach the configured local LLM. Ensure an OpenAI-compatible API is listening at LOCAL_LLM_BASE_URL. With the bundled Compose defaults (host-bound server on port 12434), containers often use http://host.docker.internal:12434/engines/llama.cpp/v1; on the host with npm run dev, use http://localhost:12434/engines/llama.cpp/v1 or the URL your operator documented.`;
   }
   if (/429|rate.?limit|temporarily unavailable|too many requests/i.test(m)) {
-    return `${m.slice(0, 400)}\n\nYour local model or runner may be busy or rate-limited. Wait a moment and retry, or check Docker Model Runner logs.`;
+    return `${m.slice(0, 400)}\n\nYour local model or inference server may be busy or rate-limited. Wait a moment and retry, or check that service’s logs.`;
   }
   if (/\bnot found\b|404/i.test(m)) {
     return `${m.slice(0, 400)}\n\nThe local server rejected the request (often “Not Found” if the runner does not support the OpenAI Responses API path). This app uses chat completions; check LOCAL_LLM_BASE_URL ends with …/v1 and your runner exposes POST /v1/chat/completions.`;
@@ -105,8 +105,6 @@ export async function POST(req: Request) {
     datasetMeta?: CsvDatasetMeta | null;
     forecastBars?: OhlcBar[];
     lastForecastPred?: PredictResult | null;
-    /** Optional markdown from TradingAgents thin bridge (different data universe than chart CSV). */
-    tradingAgentsMemo?: string | null;
     /** When true, replace role lead with compact post-predict recap rules (user message stays short). */
     postPredictAnalysis?: boolean;
     /** Answer shape: quick / layered (default) / full orchestrator panels. Ignored when postPredictAnalysis. */
@@ -121,7 +119,6 @@ export async function POST(req: Request) {
     datasetMeta = null,
     forecastBars = [],
     lastForecastPred = null,
-    tradingAgentsMemo = null,
     postPredictAnalysis = false,
     replyDepth: replyDepthRaw,
   } = body;
@@ -148,18 +145,12 @@ export async function POST(req: Request) {
       ? `\nCurrent forecast UI context: ${forecastCtx}\nUse this when explaining the violet candles after a predict run; do not contradict these mechanics.`
       : "";
 
-  const memo = typeof tradingAgentsMemo === "string" ? tradingAgentsMemo.trim() : "";
-  const tradingAgentsBlock =
-    memo.length > 0
-      ? `\nOptional external multi-agent memo (TradingAgents framework; ticker+date run, may use vendor feeds not identical to the chart CSV). Treat as separate qualitative context; do not assume it matches the uploaded OHLC bar-by-bar:\n${memo.slice(0, 45000)}\n`
-      : "";
-
   const roleLead = postPredictAnalysis
     ? buildPostPredictSystemBlock(forecastBars, lastForecastPred)
     : systemLeadForRole(agentRole, replyDepth);
 
   const system = `${roleLead}
-${datasetContext}${memoryContext}${forecastBlock}${tradingAgentsBlock}
+${datasetContext}${memoryContext}${forecastBlock}
 Shared rules: match the user's effort level — if they asked a narrow question, answer narrowly first.
 When discussing forecasts or strategy: never claim certainty, guaranteed returns, or "100% accuracy." Markets are uncertain; past backtests and accuracy scores do not guarantee future outcomes.
 For chart commentary (what moved, when, how strong, why it might have): call chart_technicals_snapshot first when bars are loaded — use returned numbers (SMA vs close, range, volume vs average, bar spacing, short trend) and explain in plain language. Do not invent OHLC or indicator values.
@@ -243,7 +234,7 @@ Help the user think in terms of hypotheses, risks, and invalidation — not as a
   const modelMessages = await convertToModelMessages(uiMessages, { tools });
 
   try {
-    // Default `openai(modelId)` uses OpenAI's /v1/responses API; Docker Model Runner only exposes /v1/chat/completions.
+    // Default `openai(modelId)` uses OpenAI's /v1/responses API; many local servers only expose /v1/chat/completions.
     const model = localOpenai.chat(chatModelId);
 
     const result = streamText({

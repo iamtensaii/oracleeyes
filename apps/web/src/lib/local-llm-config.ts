@@ -1,10 +1,10 @@
 /**
- * Local LLM (Docker Model Runner, Ollama-compatible OpenAI base URL, etc.)
+ * Local LLM — OpenAI-compatible base URL (host gateway, sidecar container, etc.).
  * /api/chat requires LOCAL_LLM_BASE_URL — there is no cloud chat provider in this stack.
  */
 import "server-only";
 
-/** Default model id (Docker Desktop “Models” often lists `docker.io/ai/gemma4:latest`). */
+/** Default model id (must match your inference server; example only). */
 export const DEFAULT_LOCAL_LLM_MODEL = "docker.io/ai/gemma4:latest";
 
 export type LocalLlmSettings = {

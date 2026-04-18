@@ -16,7 +16,6 @@ Authoritative implementations live in source; this document is a **stable index*
 | POST | `/api/chat` | Streaming UI messages; tools; optional Postgres memory |
 | GET | `/api/setup-status` | Lightweight configuration / health hints |
 | — | `/api/market/symbols`, `/api/market/ohlc` | Optional market helpers (env-gated) |
-| POST | `/api/research/tradingagents-memo` | Optional TradingAgents subprocess bridge |
 
 ## ML API (`services/ml-api`)
 

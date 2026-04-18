@@ -56,27 +56,12 @@ type Props = {
   onForecastStateChange?: (s: ForecastStatePayload) => void;
   /** After a successful one-click train + max-step forecast (opens Assistant from parent). */
   onPredictOnChartComplete?: () => void;
-  /** Optional TradingAgents thin-bridge memo for Assistant system context (server subprocess). */
-  onTradingAgentsMemo?: (memo: string | null) => void;
 };
 
 function directionLabel(d: number): string {
   if (d <= -1) return "Down (−1)";
   if (d >= 1) return "Up (+1)";
   return "Flat (0)";
-}
-
-function defaultTicker(meta: CsvDatasetMeta | null): string {
-  const raw = meta?.symbol?.trim() ?? "";
-  const compact = raw.replace(/\//g, "").replace(/[^A-Za-z0-9^.\-]/g, "").toUpperCase();
-  if (compact.length > 0 && compact.length <= 24) return compact;
-  return "NVDA";
-}
-
-function lastBarDateYmd(bars: OhlcBar[]): string {
-  if (bars.length === 0) return new Date().toISOString().slice(0, 10);
-  const t = bars[bars.length - 1]!.time;
-  return new Date(t * 1000).toISOString().slice(0, 10);
 }
 
 /** Max violet forecast candles (matches ML API `OracleForecastRequest.pred_len` upper bound). */
@@ -101,7 +86,6 @@ export function PredictPanel({
   onPipelineProgress,
   onForecastStateChange,
   onPredictOnChartComplete,
-  onTradingAgentsMemo,
 }: Props) {
   const [modelId, setModelId] = useState<string | null>(null);
   const [trainData, setTrainData] = useState<TrainResult | null>(null);
@@ -118,8 +102,6 @@ export function PredictPanel({
     phase: "idle",
     sec: 0,
   });
-  const [taSymbol, setTaSymbol] = useState("NVDA");
-  const [taAnalysisDate, setTaAnalysisDate] = useState(() => new Date().toISOString().slice(0, 10));
   const progressRef = useRef(onPipelineProgress);
   progressRef.current = onPipelineProgress;
   const forecastStateRef = useRef(onForecastStateChange);
@@ -144,8 +126,6 @@ export function PredictPanel({
       predicted: false,
       backtested: false,
     });
-    setTaSymbol(defaultTicker(datasetMeta));
-    setTaAnalysisDate(lastBarDateYmd(bars));
   }, [barsFingerprint, datasetMeta, bars]);
 
   useEffect(() => {
@@ -449,40 +429,6 @@ export function PredictPanel({
     }
   }, [backend, modelId, bars, barsPreflight, fee]);
 
-  const fetchTradingAgentsMemo = useCallback(async () => {
-    const sym = taSymbol.trim().toUpperCase();
-    if (!/^[A-Za-z0-9^.\-]{1,24}$/.test(sym)) {
-      toast.error("Symbol: 1–24 chars (letters, digits, ^ . -).");
-      return;
-    }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(taAnalysisDate.trim())) {
-      toast.error("Analysis date must be YYYY-MM-DD.");
-      return;
-    }
-    setLoading("ta-memo");
-    try {
-      const res = await fetch("/api/research/tradingagents-memo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symbol: sym, analysisDate: taAnalysisDate.trim() }),
-      });
-      const data = (await res.json()) as {
-        ok?: boolean;
-        error?: string;
-        memo_markdown?: string;
-      };
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error ?? `HTTP ${res.status}`);
-      }
-      onTradingAgentsMemo?.(data.memo_markdown ?? null);
-      toast.success("Research note added — open Agent swarm to use it in context.");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "TradingAgents memo failed");
-    } finally {
-      setLoading(null);
-    }
-  }, [taSymbol, taAnalysisDate, onTradingAgentsMemo]);
-
   const predEntropy = predData ? distributionEntropy(predData.proba) : null;
   const predTop = predData ? maxProba(predData.proba) : null;
 
@@ -532,7 +478,6 @@ export function PredictPanel({
             loading !== null ||
             bars.length < 80 ||
             loading === "oracle" ||
-            loading === "ta-memo" ||
             barsMlBlocked
           }
         >
@@ -620,9 +565,7 @@ export function PredictPanel({
             variant="default"
             size="lg"
             className="h-12 w-full max-w-md bg-violet-600 text-base text-white hover:bg-violet-600/90 dark:bg-violet-600 dark:hover:bg-violet-600/90 sm:w-auto sm:px-10"
-            disabled={
-              loading !== null || bars.length < 32 || loading === "ta-memo" || barsMlBlocked
-            }
+            disabled={loading !== null || bars.length < 32 || barsMlBlocked}
             onClick={() => void onOracleDeepForecast()}
           >
             {loading === "oracle" ? "Drawing forecast…" : "Run forecast"}
@@ -685,62 +628,6 @@ export function PredictPanel({
           <p className="text-muted-foreground text-xs leading-snug">{RESEARCH_ONLY_LINE}</p>
         </CardContent>
       </Card>
-
-      <details className="border-border bg-muted/20 dark:bg-muted/10 rounded-lg border">
-        <summary className="text-foreground cursor-pointer px-3 py-2 text-sm font-medium">
-          Optional: Swarm research note (ticker + date)
-        </summary>
-        <div className="border-border border-t px-3 pb-3">
-          <Card className="mt-2 border-0 shadow-none">
-            <CardHeader className="p-3 pb-1">
-              <CardTitle className="text-base">Research note for chat</CardTitle>
-              <CardDescription className="text-sm leading-relaxed">
-                Adds text to the swarm context — separate from your chart file. Can take several minutes.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 p-3 pt-0">
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-                <div className="flex min-w-[8rem] flex-1 flex-col gap-1">
-                  <Label htmlFor="ta-symbol">Ticker</Label>
-                  <Input
-                    id="ta-symbol"
-                    className="h-9 font-mono text-sm uppercase"
-                    value={taSymbol}
-                    onChange={(e) => setTaSymbol(e.target.value)}
-                    disabled={loading !== null}
-                    spellCheck={false}
-                    autoCapitalize="characters"
-                  />
-                </div>
-                <div className="flex min-w-[10rem] flex-1 flex-col gap-1">
-                  <Label htmlFor="ta-date">As-of (UTC day)</Label>
-                  <Input
-                    id="ta-date"
-                    type="date"
-                    className="h-9 font-mono text-sm"
-                    value={taAnalysisDate}
-                    onChange={(e) => setTaAnalysisDate(e.target.value)}
-                    disabled={loading !== null}
-                  />
-                </div>
-                <Button type="button" disabled={loading !== null} onClick={() => void fetchTradingAgentsMemo()}>
-                  {loading === "ta-memo" ? "Running…" : "Add memo to swarm"}
-                </Button>
-                {onTradingAgentsMemo ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={loading !== null}
-                    onClick={() => onTradingAgentsMemo(null)}
-                  >
-                    Clear from swarm
-                  </Button>
-                ) : null}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </details>
 
       <details className="border-border bg-muted/20 dark:bg-muted/10 rounded-lg border">
         <summary className="text-foreground cursor-pointer px-3 py-2 text-sm font-medium">

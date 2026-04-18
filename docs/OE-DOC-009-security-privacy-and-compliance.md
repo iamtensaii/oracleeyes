@@ -21,10 +21,10 @@ OracleEyes is positioned as **research and learning software**. Outputs (charts,
 - **CSV** is processed in the user’s browser session for the default path; treat uploads as sensitive if they contain account identifiers.
 - **Postgres** (`agent_memory`) stores assistant memory when enabled; scope retention and backups to your deployment policy.
 
-## Third-party and optional bridges
+## Third-party and optional integrations
 
-- **LLM providers** — Traffic and retention policies are governed by the provider you configure.
-- **TradingAgents bridge** — Runs only when explicitly configured; executes subprocess code with access limited by your `TRADINGAGENTS_REPO` and host controls.
+- **Local LLM** — Traffic stays on the network paths you configure (`LOCAL_LLM_BASE_URL`); retention and logging are governed by that inference service and your deployment.
+- **Optional market / web search** — When API keys are set, outbound calls follow those vendors’ policies; keep keys server-side only.
 
 ## Hardening for non-lab deployments
 
