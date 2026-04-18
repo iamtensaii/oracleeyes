@@ -1,0 +1,83 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: oracleeyes
+      POSTGRES_PASSWORD: oracleeyes
+      POSTGRES_DB: oracleeyes
+    # Docker Desktop + WSL often fails here with:
+    #   ports are not available ... /forwards/expose returned unexpected status: 500
+    # Publishing Postgres to the Windows host is what triggers that path. Other services
+    # still reach the DB at postgres:5432 on the compose network (DATABASE_URL unchanged).
+    # Host DB access: `docker compose exec postgres psql -U oracleeyes -d oracleeyes`
+    # To publish 5432 to the host again after Docker is healthy, add back:
+    # ports:
+    #   - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oracleeyes -d oracleeyes -h 127.0.0.1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+
+  # ML API: rebuild image after Dockerfile changes. GPU: requires NVIDIA drivers + Docker GPU support
+  # (Docker Desktop WSL2 / Linux + nvidia-container-toolkit). Comment out `gpus` if the engine errors on your host.
+  ml-api:
+    build:
+      context: ./services/ml-api
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    gpus: all
+    environment:
+      DATABASE_URL: postgresql://oracleeyes:oracleeyes@postgres:5432/oracleeyes
+      KRONOS_SOURCE_DIR: /opt/kronos
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    volumes:
+      - ml_artifacts:/app/.artifacts
+      - ../Kronos:/opt/kronos:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        # Browser (your machine) calls ML API on published port 8000
+        NEXT_PUBLIC_ML_API_URL: http://localhost:8000
+    extra_hosts:
+      # Reach host-bound Docker Model Runner (TCP :12434) from Linux/WSL Compose
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "3000:3000"
+    # Chat: LOCAL_LLM_* from ./.env and/or ./apps/web/.env (see .env.example). No cloud chat provider in this stack.
+    # `environment` below overrides DATABASE_URL / ML so host-style URLs in apps/web/.env do not break Docker.
+    env_file:
+      - path: .env
+        required: false
+      - path: ./apps/web/.env
+        required: false
+    environment:
+      # Next.js API routes (server) call ml-api inside the compose network
+      ML_API_URL: http://ml-api:8000
+      DATABASE_URL: postgresql://oracleeyes:oracleeyes@postgres:5432/oracleeyes
+      # Model Runner listens on the host at :12434 when TCP is enabled — use host.docker.internal from containers.
+      # (model-runner.docker.internal often refuses unless Docker wires it; host.docker.internal is reliable.)
+      # Host `npm run dev`: set LOCAL_LLM_BASE_URL=http://localhost:12434/engines/llama.cpp/v1 in apps/web/.env
+      LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-http://host.docker.internal:12434/engines/llama.cpp/v1}
+      LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-docker.io/ai/gemma4:latest}
+    depends_on:
+      - ml-api
+      - postgres
+
+  # RuVector: optional graph/vector layer — see https://github.com/ruvnet/RuVector
+
+volumes:
+  pgdata:
+  ml_artifacts:

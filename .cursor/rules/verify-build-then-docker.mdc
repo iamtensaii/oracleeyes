@@ -1,0 +1,53 @@
+---
+description: Verify web with npm run build; rebuild Docker images so containers match code (prefer full stack rebuild when unsure)
+alwaysApply: true
+---
+
+# Verify build, then Docker (decide, then act)
+
+## Always: web verification
+
+After **meaningful changes** under `apps/web` (TS/TSX/JS, config that affects build, `package.json`), run **`npm run build`** with cwd **`apps/web`**. Fix failures before treating the task as done.
+
+Skip a redundant build only when the change cannot affect the Next app (e.g. markdown-only, unrelated folder).
+
+## Rebuild everything (default after code changes)
+
+When edits touched **`apps/web`**, **`services/ml-api`**, any **`Dockerfile`**, or **`docker-compose.yml`**, assume Docker users need **fresh images**. From the directory that contains **`docker-compose.yml`** (repo **`oracleeyes/oracleeyes`**, not the monorepo parent):
+
+```bash
+docker compose up --build -d
+```
+
+That rebuilds **all** services that define a `build:` (`web`, `ml-api`) and recreates containers. Prefer this **full** rebuild whenever you are **unsure** or the diff spans more than one service.
+
+Use a **scoped** rebuild only when you are certain only one image changed:
+
+```bash
+docker compose up --build -d web    # only apps/web / web Dockerfile
+docker compose up --build -d ml-api  # only services/ml-api
+```
+
+Do **not** skip rebuilding after implementation work and then only suggest commands to the user—**run** build/compose yourself when the task is in-repo code and Docker is in scope (per user rules).
+
+## Docker: ask yourself first
+
+Before running compose, **briefly decide** whether containers need updating:
+
+| Run **`docker compose up --build -d`** (full) when… | Skip Docker when… |
+|------------------------------------------------------|-------------------|
+| **`apps/web`** or **`services/ml-api`** or **Docker/compose** changed | Change is **docs-only**, **tests-only**, or **outside** those paths |
+| You are **unsure** which service’s image is stale | User is clearly on **pure local** `npm run dev` + host ML and did not ask about Docker |
+| User asked to **refresh / rebuild / restart** the stack | — |
+
+- **Rebuild** (`--build`) when image contents or build args changed.  
+- **`docker compose restart <service>`** only when the image is unchanged and you only need a process restart.
+
+## Examples
+
+```bash
+cd apps/web && npm run build
+cd /path/to/oracleeyes && docker compose up --build -d   # oracleeyes/ folder with docker-compose.yml
+```
+
+Do not skip **`npm run build`** for web work just because Docker will run `next build` again—local build catches errors faster.

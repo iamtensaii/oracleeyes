@@ -1,0 +1,28 @@
+# Env (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Dependencies & build outputs (also covered by apps/web and services/ml-api .gitignore)
+node_modules/
+apps/web/node_modules/
+apps/web/.next/
+apps/web/out/
+apps/web/build/
+services/ml-api/.venv/
+services/ml-api/__pycache__/
+services/ml-api/.artifacts/
+*.py[cod]
+*$py.class
+
+# Logs & OS
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# IDE (optional — remove if your team commits shared VS Code settings)
+.idea/
+
+# TypeScript
+*.tsbuildinfo
